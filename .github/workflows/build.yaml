@@ -10,10 +10,13 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
       - name: Get creusot-rs Git Revision
         run: |
-          echo "CREUSOT_REF_NAME=${{ inputs.creusot_branch || 'master' }}"
+          echo "CREUSOT_REF_NAME=${{ inputs.creusot_branch || 'master' }}" >> $GITHUB_ENV
           echo "CREUSOT_REV=$(curl -s "https://api.github.com/repos/creusot-rs/creusot/branches/${{ inputs.creusot_branch || 'master' }}" | jq -r '.commit.sha')" >> $GITHUB_ENV
 
       - name: Login to GitHub Container Registry
