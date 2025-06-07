@@ -3,8 +3,8 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      creusot_branch:
-        description: 'creusot-rs branch'
+      creusot_ref:
+        description: 'creusot-rs ref'
         required: false
         type: string
 jobs:
@@ -16,8 +16,21 @@ jobs:
     steps:
       - name: Get creusot-rs Git Revision
         run: |
-          echo "CREUSOT_REF_NAME=${{ inputs.creusot_branch || 'master' }}" >> $GITHUB_ENV
-          echo "CREUSOT_REV=$(curl -s "https://api.github.com/repos/creusot-rs/creusot/branches/${{ inputs.creusot_branch || 'master' }}" | jq -r '.commit.sha')" >> $GITHUB_ENV
+          REF_NAME="${{ inputs.creusot_ref || 'master' }}"
+          BRANCH_DATA=$(curl -s "https://api.github.com/repos/creusot-rs/creusot/git/matching-refs/heads/$REF_NAME")
+          if [ "$(echo "$BRANCH_DATA" | jq -r 'length')" -gt 0 ]; then
+            echo "CREUSOT_REF_NAME=$REF_NAME" >> $GITHUB_ENV
+            echo "CREUSOT_REV=$(echo "$BRANCH_DATA" | jq -r '.[0].object.sha')" >> $GITHUB_ENV
+            exit 0
+          fi
+          TAG_DATA=$(curl -s "https://api.github.com/repos/creusot-rs/creusot/git/matching-refs/tags/$REF_NAME")
+          if [ "$(echo "$TAG_DATA" | jq -r 'length')" -gt 0 ]; then
+            echo "CREUSOT_REF_NAME=$REF_NAME" >> $GITHUB_ENV
+            echo "CREUSOT_REV=$(echo "$TAG_DATA" | jq -r '.[0].object.sha')" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "Error: Could not find ref '$REF_NAME' as either a branch or tag"
+          exit 1
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
